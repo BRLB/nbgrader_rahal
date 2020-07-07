@@ -142,6 +142,18 @@ class CourseDirectory(LoggingConfigurable):
         )
     ).tag(config=True)
 
+    preview_directory = Unicode(
+        'preview',
+        help=dedent(
+            """
+            The name of the directory that contains the version of the
+            assignment that can be previewed by the lecturer. This corresponds to
+            the `nbgrader_step` variable in the `directory_structure` config
+            option.
+            """
+        )
+    ).tag(config=True)
+
     submitted_directory = Unicode(
         'submitted',
         help=dedent(
@@ -267,6 +279,7 @@ class CourseDirectory(LoggingConfigurable):
             """
         )
     ).tag(config=True)
+
 
     def format_path(self, nbgrader_step: str, student_id: str, assignment_id: str, escape: bool = False) -> str:
         kwargs = dict(

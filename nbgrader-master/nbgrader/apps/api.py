@@ -370,6 +370,16 @@ class NbGraderAPI(LoggingConfigurable):
         else:
             assignment["release_path"] = None
 
+        # get preview directory
+        previewdir = os.path.abspath(self.coursedir.format_path(
+            self.coursedir.preview_directory,
+            student_id='.',
+            assignment_id=assignment_id))
+        if os.path.exists(previewdir):
+            assignment["preview_path"] = os.path.relpath(previewdir, self.coursedir.root)
+        else:
+            assignment["preview_path"] = None
+
         # number of submissions
         assignment["num_submissions"] = len(self.get_submitted_students(assignment_id))
 

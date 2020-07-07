@@ -226,6 +226,7 @@ class NbGrader(JupyterApp):
             ("directory_structure", "directory_structure"),
             ("source_directory", "source_directory"),
             ("release_directory", "release_directory"),
+            ("preview_directory", "preview_directory"),
             ("submitted_directory", "submitted_directory"),
             ("autograded_directory", "autograded_directory"),
             ("feedback_directory", "feedback_directory"),

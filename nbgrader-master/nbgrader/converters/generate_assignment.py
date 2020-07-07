@@ -53,7 +53,12 @@ class GenerateAssignment(BaseConverter):
 
     @property
     def _output_directory(self) -> str:
-        return self.coursedir.release_directory
+        return self.coursedir.release_directory #this can be changed to preview_directory
+# but then the magnifying glass wont appear
+
+    @property
+    def _preview_directory(self) -> str:
+        return self.coursedir.preview_directory
 
     preprocessors = List([
         IncludeHeaderFooter,

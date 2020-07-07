@@ -95,11 +95,18 @@ class BaseConverter(LoggingConfigurable):
     def _output_directory(self):
         raise NotImplementedError
 
+    @property
+    def _preview_directory(self):
+        raise NotImplementedError
+
     def _format_source(self, assignment_id: str, student_id: str, escape: bool = False) -> str:
         return self.coursedir.format_path(self._input_directory, student_id, assignment_id, escape=escape)
 
     def _format_dest(self, assignment_id: str, student_id: str, escape: bool = False) -> str:
         return self.coursedir.format_path(self._output_directory, student_id, assignment_id, escape=escape)
+
+    def _format_preview(self, assignment_id: str, student_id: str, escape: bool = False) -> str:
+        return self.coursedir.format_path(self._preview_directory, student_id, assignment_id, escape=escape)
 
     def init_notebooks(self) -> None:
         self.assignments = {}
@@ -162,8 +169,11 @@ class BaseConverter(LoggingConfigurable):
 
     def write_single_notebook(self, output: str, resources: ResourcesDict) -> None:
         # configure the writer build directory
+        self.writer.build_directory = self._format_preview(
+            resources['nbgrader']['assignment'], resources['nbgrader']['student'])
         self.writer.build_directory = self._format_dest(
             resources['nbgrader']['assignment'], resources['nbgrader']['student'])
+
 
         # write out the results
         self.writer.write(output, resources, notebook_name=resources['unique_key'])
@@ -179,7 +189,11 @@ class BaseConverter(LoggingConfigurable):
             if student_id in exclude_ids:
                 return False
 
+        paths = []
         dest = os.path.normpath(self._format_dest(assignment_id, student_id))
+        paths.append(dest)
+        preview = os.path.normpath(self._format_preview(assignment_id, student_id))
+        paths.append(preview)
 
         # the destination doesn't exist, so we haven't processed it
         if self.coursedir.notebook_id == "*":
@@ -187,11 +201,12 @@ class BaseConverter(LoggingConfigurable):
                 return True
         else:
             # if any of the notebooks don't exist, then we want to process them
-            for notebook in self.notebooks:
-                filename = os.path.splitext(os.path.basename(notebook))[0] + self.exporter.file_extension
-                path = os.path.join(dest, filename)
-                if not os.path.exists(path):
-                    return True
+            for location in paths:
+                for notebook in self.notebooks:
+                    filename = os.path.splitext(os.path.basename(notebook))[0] + self.exporter.file_extension
+                    path = os.path.join(location, filename)
+                    if not os.path.exists(path):
+                        return True
 
         # if we have specified --force, then always remove existing stuff
         if self.force:
@@ -235,39 +250,49 @@ class BaseConverter(LoggingConfigurable):
         notebooks in an assignment.
 
         """
+        paths=[]
         source = self._format_source(assignment_id, student_id)
         dest = self._format_dest(assignment_id, student_id)
+        paths.append(dest)
+        preview = self._format_preview(assignment_id, student_id)
+        paths.append(preview)
 
         # detect other files in the source directory
-        for filename in find_all_files(source, self.coursedir.ignore + ["*.ipynb"]):
-            # Make sure folder exists.
-            path = os.path.join(dest, os.path.relpath(filename, source))
-            if not os.path.exists(os.path.dirname(path)):
-                os.makedirs(os.path.dirname(path))
-            if os.path.exists(path):
-                remove(path)
-            self.log.info("Copying %s -> %s", filename, path)
-            shutil.copy(filename, path)
+        for location in paths:
+            for filename in find_all_files(source, self.coursedir.ignore + ["*.ipynb"]):
+                # Make sure folder exists.
+                path = os.path.join(location, os.path.relpath(filename, source))
+                if not os.path.exists(os.path.dirname(path)):
+                    os.makedirs(os.path.dirname(path))
+                if os.path.exists(path):
+                    remove(path)
+                self.log.info("Copying %s -> %s", filename, path)
+                shutil.copy(filename, path)
 
     def set_permissions(self, assignment_id: str, student_id: str) -> None:
         self.log.info("Setting destination file permissions to %s", self.permissions)
+        paths = []
         dest = os.path.normpath(self._format_dest(assignment_id, student_id))
+        paths.append(dest)
+        preview = os.path.normpath(self._format_preview(assignment_id, student_id))
+        paths.append(preview)
         permissions = int(str(self.permissions), 8)
-        for dirname, _, filenames in os.walk(dest):
-            for filename in filenames:
-                os.chmod(os.path.join(dirname, filename), permissions)
-            # If groupshared, set dir permissions - see comment below.
-            st_mode = os.stat(dirname).st_mode
-            if self.coursedir.groupshared and st_mode & 0o2770 != 0o2770:
-                try:
-                    os.chmod(dirname, (st_mode|0o2770) & 0o2777)
-                except PermissionError:
-                    self.log.warning("Could not update permissions of %s to make it groupshared", dirname)
-        # If groupshared, set write permissions on directories.  Directories
-        # are created within ipython_genutils.path.ensure_dir_exists via
-        # nbconvert.writer, (unless there are supplementary files) with a
-        # default mode of 755 and there is no way to pass the mode arguments
-        # all the way to there!  So we have to walk and fix.
+        for location in paths:
+            for dirname, _, filenames in os.walk(location):
+                for filename in filenames:
+                    os.chmod(os.path.join(dirname, filename), permissions)
+                # If groupshared, set dir permissions - see comment below.
+                st_mode = os.stat(dirname).st_mode
+                if self.coursedir.groupshared and st_mode & 0o2770 != 0o2770:
+                    try:
+                        os.chmod(dirname, (st_mode|0o2770) & 0o2777)
+                    except PermissionError:
+                        self.log.warning("Could not update permissions of %s to make it groupshared", dirname)
+            # If groupshared, set write permissions on directories.  Directories
+            # are created within ipython_genutils.path.ensure_dir_exists via
+            # nbconvert.writer, (unless there are supplementary files) with a
+            # default mode of 755 and there is no way to pass the mode arguments
+            # all the way to there!  So we have to walk and fix.
         if self.coursedir.groupshared:
             # Root may be created in this step, and is not included above.
             rootdir = self.coursedir.format_path(self._output_directory, '.', '.')

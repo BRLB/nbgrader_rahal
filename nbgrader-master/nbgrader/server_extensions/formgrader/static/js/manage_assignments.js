@@ -140,11 +140,11 @@ var AssignmentUI = Backbone.View.extend({
                 .attr("aria-hidden", "true")));
 
         // preview student version
-        var release_path = this.model.get("release_path");
-        if (release_path) {
+        var preview_path = this.model.get("preview_path");
+        if (preview_path) {
             this.$preview.append($("<a/>")
                 .attr("target", "_blank")
-                .attr("href", base_url + "/tree/" + url_prefix + "/" + release_path)
+                .attr("href", base_url + "/tree/" + url_prefix + "/" + preview_path)
                 .append($("<span/>")
                     .addClass("glyphicon glyphicon-search")
                     .attr("aria-hidden", "true")));
