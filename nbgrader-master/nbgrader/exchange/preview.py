@@ -13,7 +13,7 @@ from .exchange import Exchange
 from ..utils import self_owned
 
 
-class ExchangeReleaseAssignment(Exchange):
+class ExchangePreviewAssignment(Exchange):
 
     force = Bool(False, help="Force overwrite existing files in the exchange.").tag(config=True)
 
@@ -29,7 +29,7 @@ class ExchangeReleaseAssignment(Exchange):
             cfg.ExchangeReleaseAssignment.merge(cfg.ExchangeRelease)
             del cfg.ExchangeRelease
 
-        super(ExchangeReleaseAssignment, self)._load_config(cfg, **kwargs)
+        super(ExchangePreviewAssignment, self)._load_config(cfg, **kwargs)
 
     def ensure_root(self):
         perms = S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH|((S_IWGRP|S_ISGID) if self.coursedir.groupshared else 0)

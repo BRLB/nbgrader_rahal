@@ -9,6 +9,7 @@ from ..converters import BaseConverter, GenerateAssignment, NbGraderException
 from traitlets.traitlets import MetaHasTraits
 from typing import List, Any
 from traitlets.config.loader import Config
+from ..exchange import Exchange, ExchangePreviewAssignment, ExchangeError
 
 aliases = {
     'course': 'CourseDirectory.course_id'
@@ -113,6 +114,7 @@ class GenerateAssignmentApp(NbGrader):
     def _classes_default(self) -> List[MetaHasTraits]:
         classes = super(GenerateAssignmentApp, self)._classes_default()
         classes.extend([BaseConverter, GenerateAssignment])
+        classes.extend([Exchange, ExchangePreviewAssignment])
         return classes
 
     def _load_config(self, cfg: Config, **kwargs: Any) -> None:
@@ -142,7 +144,16 @@ class GenerateAssignmentApp(NbGrader):
             self.coursedir.assignment_id = self.extra_args[0]
 
         converter = GenerateAssignment(coursedir=self.coursedir, parent=self)
+        preview = ExchangePreviewAssignment(
+            coursedir=self.coursedir,
+            authenticator=self.authenticator,
+            parent=self)
+
         try:
             converter.start()
+            try:
+                preview.start()
+            except ExchangeError:
+                self.fail("nbgrader release_assignment failed")
         except NbGraderException:
             sys.exit(1)

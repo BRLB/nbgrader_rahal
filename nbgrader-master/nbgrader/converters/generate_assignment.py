@@ -20,6 +20,7 @@ from ..preprocessors import (
 from traitlets.config.loader import Config
 from typing import Any
 from ..coursedir import CourseDirectory
+from ..exchange import Exchange, ExchangePreviewAssignment, ExchangeError
 
 
 class GenerateAssignment(BaseConverter):
@@ -42,6 +43,12 @@ class GenerateAssignment(BaseConverter):
             """
         )
     ).tag(config=True)
+
+    @default("classes")
+    def _classes_default(self):
+        classes = super(GenerateAssignment, self)._classes_default()
+        classes.extend([Exchange, ExchangePreviewAssignment])
+        return classes
 
     @default("permissions")
     def _permissions_default(self) -> int:
