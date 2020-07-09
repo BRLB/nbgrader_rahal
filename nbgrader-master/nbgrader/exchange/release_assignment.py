@@ -60,7 +60,7 @@ class ExchangeReleaseAssignment(Exchange):
         if not os.path.isdir(self.src_path):
             source = self.coursedir.format_path(self.coursedir.source_directory, '.', self.coursedir.assignment_id)
             if os.path.isdir(source):
-                # Looks like the instructor forgot to assign
+                # Looks like the instructor forgot to generate assignment
                 self.fail("Assignment found in '{}' but not '{}', run `nbgrader generate_assignment` first.".format(
                     source, self.src_path))
             else:

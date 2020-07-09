@@ -13,7 +13,7 @@ from nbconvert.exporters import Exporter, NotebookExporter
 from nbconvert.writers import FilesWriter
 
 from ..coursedir import CourseDirectory
-from ..utils import find_all_files, rmtree, remove
+from ..utils import find_all_files, rmtree, remove, make_unique_key
 from ..preprocessors.execute import UnresponsiveKernelError
 from ..nbgraderformat import SchemaTooOldError, SchemaTooNewError
 import typing
@@ -157,6 +157,7 @@ class BaseConverter(LoggingConfigurable):
 
         resources = {}
         resources['unique_key'] = gd['notebook_id']
+        #resources['preview'] = gd['notebook_id']
         resources['output_files_dir'] = '%s_files' % gd['notebook_id']
 
         resources['nbgrader'] = {}
@@ -167,16 +168,28 @@ class BaseConverter(LoggingConfigurable):
 
         return resources
 
-    def write_single_notebook(self, output: str, resources: ResourcesDict) -> None:
+    def write_single_notebook(self, output: str, preview: str, resources: ResourcesDict) -> None:
         # configure the writer build directory
-        self.writer.build_directory = self._format_preview(
-            resources['nbgrader']['assignment'], resources['nbgrader']['student'])
         self.writer.build_directory = self._format_dest(
             resources['nbgrader']['assignment'], resources['nbgrader']['student'])
-
+        self.writer.build_directory = self._format_preview(
+            resources['nbgrader']['assignment'], resources['nbgrader']['student'])
 
         # write out the results
         self.writer.write(output, resources, notebook_name=resources['unique_key'])
+        # write out the results
+        student_id = resources['student_id']
+        notebook_id = resources['notebook_id']
+
+        unique_key2 = make_unique_key(
+            self.coursedir.course_id,
+            self.coursedir.assignment_id,
+            notebook_id,
+            student_id,
+            'preview')
+        self.writer.write(preview, resources, notebook_name=resources[unique_key2])
+        #bruk unique_key2 eller 'unique_key'
+
 
     def init_destination(self, assignment_id: str, student_id: str) -> bool:
         """Initialize the destination for an assignment. Returns whether the
@@ -316,7 +329,8 @@ class BaseConverter(LoggingConfigurable):
         self.log.info("Converting notebook %s", notebook_filename)
         resources = self.init_single_notebook_resources(notebook_filename)
         output, resources = self.exporter.from_filename(notebook_filename, resources=resources)
-        self.write_single_notebook(output, resources)
+        preview = self.exporter.from_filename(notebook_filename, resources=resources)
+        self.write_single_notebook(output, preview, resources)
 
     def convert_notebooks(self) -> None:
         errors = []
@@ -360,6 +374,7 @@ class BaseConverter(LoggingConfigurable):
                 # convert all the notebooks
                 for notebook_filename in self.notebooks:
                     self.convert_single_notebook(notebook_filename)
+
 
                 # set assignment permissions
                 self.set_permissions(gd['assignment_id'], gd['student_id'])
